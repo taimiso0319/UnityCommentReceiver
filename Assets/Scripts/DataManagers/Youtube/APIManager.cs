@@ -13,6 +13,7 @@ namespace YouTubeLive {
 		private Coroutine currentChatCoroutine = null;
 		private Coroutine currentChannelCoroutine = null;
 		private int pollingIntervalMillis;
+		[SerializeField, Tooltip("初期化や取得ができなかった時、時間が短すぎた時に用います。3000以上が望ましいです。")] private int defaultPollingIntervalMillis = 5000;
 		public bool receiveChannelDetails = true;
 		public int reciveChannelDetailsInterval = 20;
 		private ListenersData _listenersData;
@@ -143,6 +144,7 @@ namespace YouTubeLive {
 			}
 			float waitSeconds = (float) TimeSpan.FromMilliseconds (pollingIntervalMillis).TotalSeconds;
 			yield return new WaitForSeconds (waitSeconds);
+			pollingIntervalMillis = 0;
 			string chatURI = APIData.ChatURI ();
 #if UNITY_EDITOR
 			if(showDebugLog) { Debug.Log (chatURI);}
@@ -155,10 +157,11 @@ namespace YouTubeLive {
 				SetNextPageToken (serializedItems);
 				pollingIntervalMillis = serializedItems.pollingIntervalMillis;
 				AddComment (serializedItems);
-			}else{
-				pollingIntervalMillis = 5000;
 			}
-			StartCoroutine (WaitForReceiveChat ());
+			if(serializedItems.pollingIntervalMillis < defaultPollingIntervalMillis){
+				pollingIntervalMillis = defaultPollingIntervalMillis;	
+			}
+			currentChatCoroutine = StartCoroutine (WaitForReceiveChat ());
 
 		}
 
@@ -235,7 +238,7 @@ namespace YouTubeLive {
 				if(isFirstTry){
 					StartCoroutine (GetChatId ());
 				}
-				StartCoroutine (WaitForReceiveChannelDetails ());
+				currentChannelCoroutine = StartCoroutine (WaitForReceiveChannelDetails ());
 			}
 		}
 
