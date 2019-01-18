@@ -10,10 +10,10 @@ namespace YouTubeLive {
     public class APIManager : SingletonMonoBehaviour<APIManager> {
         private bool receiveChat = true;
         private bool isFirstTry = true;
-        private Coroutine currentChatCoroutine = null;
-        private Coroutine currentChannelCoroutine = null;
         private int pollingIntervalMillis;
         [SerializeField, Tooltip ("初期化や取得ができなかった時、時間が短すぎた時に用います。3000以上が望ましいです。")] private int defaultPollingIntervalMillis = 5000;
+        private int noItemsRespondCount = 0;
+        [SerializeField, Tooltip ("ある一定期間コメントが取得できない場合、Liveが行われているか再度チェックするインターバルです。")] private int noItemsRespondLimit = 5;
         public bool receiveChannelDetails = true;
         public int reciveChannelDetailsInterval = 20;
         private ListenersData _listenersData;
@@ -36,6 +36,11 @@ namespace YouTubeLive {
         }
 
         [SerializeField] private bool showDebugLog = false;
+
+        // Coroutineを個別に止めるのは、動画のチャットなどとは無関係の画像のキャッシングが止まらないようにするため。
+        private Coroutine currentChatCoroutine = null;
+        private Coroutine currentChannelCoroutine = null;
+        private Coroutine currentCheckCoroutine = null;
 
         private void Start () {
             if (_listenersData == null) {
@@ -92,13 +97,18 @@ namespace YouTubeLive {
             receiveChat = false;
         }
 
+        public void StopReceiveProgress () {
+            StopReceiveComments ();
+            if (currentChatCoroutine != null) { StopCoroutine (currentChatCoroutine); currentChatCoroutine = null; }
+            if (currentChannelCoroutine != null) { StopCoroutine (currentChannelCoroutine); currentChannelCoroutine = null; }
+            if (currentCheckCoroutine != null) { StopCoroutine (currentCheckCoroutine); currentCheckCoroutine = null; }
+        }
+
         /// <summary>
         /// コメント取得を停止し、チャンネルIDやビデオIDを消します。APIKeyは保持されます。
         /// </summary>
         public void ClearSettings () {
-            StopReceiveComments ();
-            if (currentChatCoroutine != null) { StopCoroutine (currentChatCoroutine); }
-            if (currentChannelCoroutine != null) { StopCoroutine (currentChannelCoroutine); }
+            StopReceiveProgress ();
             APIData.InitializeData ();
             isFirstTry = true;
         }
@@ -113,9 +123,14 @@ namespace YouTubeLive {
 
         private IEnumerator GetChatId () {
             string searchChatURI = APIData.SearchChatURI ();
+
+            if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
-            if (showDebugLog) { Debug.Log (searchChatURI); }
+                if (showDebugLog) { Debug.Log (searchChatURI); }
+#elif UNITY_STANDALONE
+                Debug.Log (searchChatURI);
 #endif
+            }
             UnityWebRequest webRequest = UnityWebRequest.Get (searchChatURI);
             yield return webRequest.SendWebRequest ();
 
@@ -147,22 +162,47 @@ namespace YouTubeLive {
             yield return new WaitForSeconds (waitSeconds);
             pollingIntervalMillis = 0;
             string chatURI = APIData.ChatURI ();
+            if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
-            if (showDebugLog) { Debug.Log (chatURI); }
+                if (showDebugLog) { Debug.Log (chatURI); }
+#elif UNITY_STANDALONE
+                Debug.Log (chatURI);
 #endif
+            }
             UnityWebRequest webRequest = UnityWebRequest.Get (chatURI);
             yield return webRequest.SendWebRequest ();
             string jsonText = webRequest.downloadHandler.text;
             Json.ChatDetails.SerializedItems serializedItems = JsonUtility.FromJson<Json.ChatDetails.SerializedItems> (jsonText);
             if (serializedItems.items != null) {
-                SetNextPageToken (serializedItems);
-                pollingIntervalMillis = serializedItems.pollingIntervalMillis;
-                AddComment (serializedItems);
+                if (serializedItems.items.Length == 0) {
+                    noItemsRespondCount++;
+                    if (noItemsRespondCount >= noItemsRespondLimit) {
+                        noItemsRespondCount = 0;
+                        currentCheckCoroutine = StartCoroutine (GetVideoDetails ());
+                    }
+                } else {
+                    SetNextPageToken (serializedItems);
+                    pollingIntervalMillis = serializedItems.pollingIntervalMillis;
+                    AddComment (serializedItems);
+                }
             }
+            /* else if (serializedItems.error != null) {
+                           ErrorDetails details = ErrorMessageResolver.FormatError (serializedItems.error);
+                           if (details.reason.Equals (ErrorMessageResolver.Reason.liveChatEnded.ToString ())) {
+                               Debug.Log ("LiveChatが終了したため、コメントの取得を停止しました。");
+                               ClearSettings ();
+                               yield break;
+                           }
+                       } */
             if (serializedItems.pollingIntervalMillis < defaultPollingIntervalMillis) {
                 pollingIntervalMillis = defaultPollingIntervalMillis;
             }
             webRequest.Dispose ();
+            if (liveStatus.liveBroadcastContent.Equals ("none")) {
+                StopReceiveProgress ();
+                Debug.Log ("Liveが終了しているため、コメントの取得を停止しました。");
+                yield break;
+            }
             currentChatCoroutine = StartCoroutine (WaitForReceiveChat ());
         }
 
@@ -184,9 +224,13 @@ namespace YouTubeLive {
 
         private IEnumerator GetVideoId () {
             string videoSearchURI = APIData.SearchVideoURI ();
+            if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
-            if (showDebugLog) { Debug.Log (videoSearchURI); }
+                if (showDebugLog) { Debug.Log (videoSearchURI); }
+#elif UNITY_STANDALONE
+                Debug.Log (videoSearchURI);
 #endif
+            }
             UnityWebRequest webRequest = UnityWebRequest.Get (videoSearchURI);
             yield return webRequest.SendWebRequest ();
 
@@ -207,9 +251,13 @@ namespace YouTubeLive {
 
         private IEnumerator GetVideoDetails () {
             string videoDetailsURI = APIData.VideoDetailsURI ();
+            if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
-            if (showDebugLog) { Debug.Log (videoDetailsURI); }
+                if (showDebugLog) { Debug.Log (videoDetailsURI); }
+#elif UNITY_STANDALONE
+                Debug.Log (videoDetailsURI);
 #endif
+            }
             UnityWebRequest webRequest = UnityWebRequest.Get (videoDetailsURI);
             yield return webRequest.SendWebRequest ();
             if (webRequest.isHttpError || webRequest.isNetworkError) {
@@ -218,17 +266,23 @@ namespace YouTubeLive {
                 string jsonText = webRequest.downloadHandler.text;
                 Json.LiveStreamingDetails.SerializedItems serializedItems = JsonUtility.FromJson<Json.LiveStreamingDetails.SerializedItems> (jsonText);
                 SetLiveStreamingStatus (serializedItems);
-                SetChannelId (serializedItems);
-                currentChannelCoroutine = StartCoroutine (GetChannelDetails ());
+                if (isFirstTry) {
+                    SetChannelId (serializedItems);
+                    currentChannelCoroutine = StartCoroutine (GetChannelDetails ());
+                }
             }
             webRequest.Dispose ();
         }
 
         private IEnumerator GetChannelDetails () {
             string channelDetailsURI = APIData.ChannelDetailsURI ();
+            if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
-            if (showDebugLog) { Debug.Log (channelDetailsURI); }
+                if (showDebugLog) { Debug.Log (channelDetailsURI); }
+#elif UNITY_STANDALONE
+                Debug.Log (channelDetailsURI);
 #endif
+            }
             UnityWebRequest webRequest = UnityWebRequest.Get (channelDetailsURI);
             yield return webRequest.SendWebRequest ();
             if (webRequest.isHttpError || webRequest.isNetworkError) {
@@ -248,7 +302,6 @@ namespace YouTubeLive {
         private void AddComment (Json.ChatDetails.SerializedItems serializedItems) {
             string channelId;
             string imageUrl;
-            //Queue<string> channelIdQueue = new Queue<string>();
             if (serializedItems.items == null) {
                 return;
             }
