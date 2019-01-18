@@ -3,10 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace YouTubeLive.Json {
+
     namespace LiveStreamingDetails {
         [Serializable]
         public class SerializedItems {
             public Items[] items;
+            public Error error;
         }
 
         [Serializable]
@@ -70,6 +72,7 @@ namespace YouTubeLive.Json {
             public int pollingIntervalMillis;
             public string nextPageToken;
             public Items[] items;
+            public Error error;
         }
 
         [Serializable]
@@ -131,6 +134,7 @@ namespace YouTubeLive.Json {
         [Serializable]
         public class SerializedItems {
             public Items[] items;
+            public Error error;
         }
 
         [Serializable]
@@ -148,4 +152,17 @@ namespace YouTubeLive.Json {
         }
     }
 
+    [Serializable]
+    public class Error {
+        public Errors[] errors;
+        public string code;
+        public string message;
+    }
+
+    [Serializable]
+    public class Errors {
+        public string domain;
+        public string reason;
+        public string message;
+    }
 }
