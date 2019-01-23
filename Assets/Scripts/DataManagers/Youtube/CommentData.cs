@@ -37,6 +37,7 @@ namespace YouTubeLive {
 
 	public class CommentStatus : IEquatable<CommentStatus> {
 		public string type;
+		public string id;
 		public string channelId;
 		public string displayName;
 		public string displayMessage;
@@ -54,6 +55,7 @@ namespace YouTubeLive {
 
 		public CommentStatus (Json.ChatDetails.Items items) {
 			type = items.snippet.type;
+			id = items.id;
 			channelId = items.authorDetails.channelId;
 			displayName = items.authorDetails.displayName;
 			displayMessage = items.snippet.displayMessage;
@@ -77,6 +79,7 @@ namespace YouTubeLive {
 
 		public bool Equals (CommentStatus other) {
 			return type.Equals (other.type) &&
+				id.Equals (other.id) &&
 				channelId.Equals (other.channelId) &&
 				displayName.Equals (other.displayName) &&
 				displayMessage.Equals (other.displayMessage) &&
@@ -96,6 +99,7 @@ namespace YouTubeLive {
 		public override int GetHashCode () {
 			unchecked {
 				int hashCode = type.GetHashCode ();
+				hashCode = (hashCode * 397) ^ id.GetHashCode ();
 				hashCode = (hashCode * 397) ^ channelId.GetHashCode ();
 				hashCode = (hashCode * 397) ^ displayName.GetHashCode ();
 				if (!string.IsNullOrEmpty (displayMessage)) { hashCode = (hashCode * 397) ^ displayMessage.GetHashCode (); }

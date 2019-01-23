@@ -4,6 +4,22 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace YouTubeLive.Json {
 
+    namespace ChannelStatus {
+        [Serializable]
+        public class SerializedItems {
+            public Items[] items;
+        }
+
+        [Serializable]
+        public class Items {
+            public ID id;
+        }
+
+        [Serializable]
+        public class ID {
+            public string videoId;
+        }
+    }
     namespace LiveStreamingDetails {
         [Serializable]
         public class SerializedItems {
@@ -13,14 +29,9 @@ namespace YouTubeLive.Json {
 
         [Serializable]
         public class Items {
-            public ID id;
+            public string id;
             public Snippet snippet;
             public LiveStreamingDetails liveStreamingDetails;
-        }
-
-        [Serializable]
-        public class ID {
-            public string videoId;
         }
 
         [Serializable]
@@ -77,6 +88,7 @@ namespace YouTubeLive.Json {
 
         [Serializable]
         public class Items {
+            public string id;
             public Snippet snippet;
             public AuthorDetails authorDetails;
         }
@@ -139,6 +151,7 @@ namespace YouTubeLive.Json {
 
         [Serializable]
         public class Items {
+            public string id;
             public Statistics statistics;
         }
 

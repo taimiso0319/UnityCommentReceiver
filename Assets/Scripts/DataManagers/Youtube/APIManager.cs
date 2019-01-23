@@ -238,7 +238,7 @@ namespace YouTubeLive {
                 Debug.LogError (webRequest.error);
             } else {
                 string jsonText = webRequest.downloadHandler.text;
-                Json.LiveStreamingDetails.SerializedItems serializedItems = JsonUtility.FromJson<Json.LiveStreamingDetails.SerializedItems> (jsonText);
+                Json.ChannelStatus.SerializedItems serializedItems = JsonUtility.FromJson<Json.ChannelStatus.SerializedItems> (jsonText);
                 if (serializedItems.items.Length != 0) {
                     SetVideoId (serializedItems);
                     StartCoroutine (GetVideoDetails ());
@@ -351,7 +351,7 @@ namespace YouTubeLive {
 
         private void SetChannelId (string channelId) { APIData.channelId = channelId; }
 
-        private void SetVideoId (Json.LiveStreamingDetails.SerializedItems serializedItems) { APIData.videoId = serializedItems.items[0].id.videoId; }
+        private void SetVideoId (Json.ChannelStatus.SerializedItems serializedItems) { APIData.videoId = serializedItems.items[0].id.videoId; }
 
         private void SetVideoId (string videoId) { APIData.videoId = videoId; }
 
