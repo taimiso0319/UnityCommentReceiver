@@ -42,6 +42,60 @@ namespace YouTubeLive {
         private Coroutine currentChannelCoroutine = null;
         private Coroutine currentCheckCoroutine = null;
 
+        private DatabaseController _databaseController;
+        public DatabaseController databaseController {
+            get { return _databaseController; }
+        }
+
+        [ContextMenu ("ConnectDB")]
+        public void ConnectDB () {
+            _databaseController = new DatabaseController ();
+        }
+
+        [ContextMenu ("InitDB")]
+        public void InitDB () {
+            if (_databaseController == null) { ConnectDB (); }
+            databaseController.InitializeDatabase ();
+        }
+
+        [ContextMenu ("DropDB")]
+        public void DropDB () {
+            if (_databaseController == null) { ConnectDB (); }
+            databaseController.DropAllTables ();
+        }
+
+        [ContextMenu ("ShowDatabaseData")]
+        public void ShowCommentData () {
+            var data = databaseController.GetComments ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
+        [ContextMenu ("ShowListenerData")]
+        public void ShowListenerData () {
+            var data = databaseController.GetListenerDatas ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
+        [ContextMenu ("ShowChannelData")]
+        public void ShowChannelData () {
+            var data = databaseController.GetChannels ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
+        [ContextMenu ("ShowSuperChatData")]
+        public void ShowSuperChatData () {
+            var data = databaseController.GetSuperChats ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
         private void Start () {
             if (_listenersData == null) {
                 _listenersData = new ListenersData ();
@@ -54,6 +108,9 @@ namespace YouTubeLive {
             }
             if (_liveStatus == null) {
                 _liveStatus = this.gameObject.GetComponent<LiveStatus> ();
+            }
+            if (_databaseController == null) {
+                _databaseController = new DatabaseController ();
             }
         }
 
@@ -316,7 +373,8 @@ namespace YouTubeLive {
                     StartCoroutine (CacheListenerProfileImage (channelId, imageUrl));
 
                 }
-                _commentData.EnqueueComment (serializedItems.items[i]);
+                CommentStatus commentStatus = _commentData.EnqueueComment (serializedItems.items[i]);
+                databaseController.AddComment (APIData.videoId, commentStatus);
             }
         }
 
@@ -339,7 +397,10 @@ namespace YouTubeLive {
             webRequest.Dispose ();
         }
 
-        private void SetLiveStreamingStatus (Json.LiveStreamingDetails.SerializedItems serializedItems) { _liveStatus.SetLiveStreamingStatus (serializedItems); }
+        private void SetLiveStreamingStatus (Json.LiveStreamingDetails.SerializedItems serializedItems) {
+            _liveStatus.SetLiveStreamingStatus (serializedItems);
+            _databaseController.AddLive (_liveStatus);
+        }
 
         private void SetLiveStreamingDetails (Json.LiveStreamingDetails.SerializedItems serializedItems) { _liveStatus.SetLiveStreamingDetails (serializedItems); }
 

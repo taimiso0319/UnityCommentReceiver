@@ -16,9 +16,10 @@ namespace YouTubeLive {
 			get { return _commentQueue; }
 		}
 
-		public void EnqueueComment (Json.ChatDetails.Items items) {
-			CommentStatus chatStatus = new CommentStatus (items);
-			_commentQueue.Enqueue (chatStatus);
+		public CommentStatus EnqueueComment (Json.ChatDetails.Items items) {
+			CommentStatus commentStatus = new CommentStatus (items);
+			_commentQueue.Enqueue (commentStatus);
+			return commentStatus;
 		}
 
 		public CommentStatus DequeueComment () {
