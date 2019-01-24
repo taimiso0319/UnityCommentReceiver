@@ -54,6 +54,10 @@ namespace YouTubeLive {
 		public bool isChatSponsor;
 		public bool isChatModerator;
 
+		public CommentStatus () {
+
+		}
+
 		public CommentStatus (Json.ChatDetails.Items items) {
 			type = items.snippet.type;
 			id = items.id;
