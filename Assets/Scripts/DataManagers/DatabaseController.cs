@@ -34,6 +34,10 @@ namespace YouTubeLive {
 			dbConnector.DropTable<DatabaseTableModel.SuperChat> ();
 		}
 
+		public void DropTable<T> () {
+			dbConnector.DropTable<T> ();
+		}
+
 		private void AddData<T> (T data) {
 			dbConnector.Insert (data);
 		}
