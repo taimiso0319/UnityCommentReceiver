@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using UniRx;
+using UniRx.Async;
 using UnityEngine;
 using UnityEngine.Networking;
 using YouTubeLive.Json;
@@ -16,6 +20,7 @@ namespace YouTubeLive {
         [SerializeField, Tooltip ("ある一定期間コメントが取得できない場合、Liveが行われているか再度チェックするインターバルです。")] private int noItemsRespondLimit = 5;
         public bool receiveChannelDetails = true;
         public int reciveChannelDetailsInterval = 20;
+
         private ListenersData _listenersData;
         public ListenersData listenersData {
             get { return _listenersData; }
@@ -355,56 +360,65 @@ namespace YouTubeLive {
             }
             webRequest.Dispose ();
         }
-
         private void AddComment (Json.ChatDetails.SerializedItems serializedItems) {
-            string channelId;
-            string imageUrl;
+            List<CommentStatus> commentList = new List<CommentStatus> ();
             if (serializedItems.items == null) {
                 return;
             }
-            for (int i = 0; i < serializedItems.items.Length; i++) {
-                channelId = serializedItems.items[i].authorDetails.channelId;
-                imageUrl = serializedItems.items[i].authorDetails.profileImageUrl;
-                if (!_listenersData.IsListenerDataExists (channelId)) {
-                    _listenersData.AddListenerData (new ListenerData (channelId, imageUrl, new AtlasManager.AtlasInfo ()));
-                    StartCoroutine (CacheListenerProfileImage (channelId, imageUrl));
 
-                } else if (!_listenersData.IsListenerDataExists (channelId, imageUrl)) {
-                    StartCoroutine (CacheListenerProfileImage (channelId, imageUrl));
+            Enumerable.Range (0, serializedItems.items.Length).ToObservable ()
+                .Subscribe (i => {
+                        string channelId = serializedItems.items[i].authorDetails.channelId;
+                        string imageUrl = serializedItems.items[i].authorDetails.profileImageUrl;
+                        if (!_listenersData.IsListenerDataExists (channelId)) {
+                            _listenersData.AddListenerData (new ListenerData (channelId, imageUrl, new AtlasManager.AtlasInfo ()));
+                            CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
+                            databaseController.AddListenerData (channelId);
+                        } else if (!_listenersData.IsListenerDataExists (channelId, imageUrl)) {
+                            CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
 
-                }
-                CommentStatus commentStatus = _commentData.EnqueueComment (serializedItems.items[i]);
-                databaseController.AddComment (APIData.videoId, commentStatus);
-            }
+                        }
+                        CommentStatus commentStatus = _commentData.EnqueueComment (serializedItems.items[i]);
+                        commentList.Add (commentStatus);
+                    },
+                    () => databaseController.AddComment (APIData.videoId, commentList.ToArray ()));
         }
-
         public void ReCacheListenerProfileImage (string channelId) {
             string imageUrl = _listenersData.GetImageUrl (channelId);
             if (imageUrl != null) {
-                StartCoroutine (CacheListenerProfileImage (channelId, imageUrl));
+                CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
             }
         }
 
-        private IEnumerator CacheListenerProfileImage (string channelId, string imageUrl) {
+        //private IEnumerator CacheListenerProfileImage (string channelId, string imageUrl) {
+        //    UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture (imageUrl);
+        //    yield return webRequest.SendWebRequest ();
+        //    if (webRequest.isHttpError || webRequest.isNetworkError) {
+        //        Debug.LogError (webRequest.error);
+        //    } else {
+        //        AtlasManager.AtlasInfo atlasInfo = atlasManager.AddIconTextureToAtlas (DownloadHandlerTexture.GetContent (webRequest));
+        //        _listenersData.UpdateProfileImage (channelId, imageUrl, atlasInfo);
+        //    }
+        //    webRequest.Dispose ();
+        //}
+
+        async Task CacheListenerProfileImage (string channelId, string imageUrl) {
             UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture (imageUrl);
-            yield return webRequest.SendWebRequest ();
-            if (webRequest.isHttpError || webRequest.isNetworkError) {
-                Debug.LogError (webRequest.error);
-            } else {
-                AtlasManager.AtlasInfo atlasInfo = atlasManager.AddIconTextureToAtlas (DownloadHandlerTexture.GetContent (webRequest));
-                _listenersData.UpdateProfileImage (channelId, imageUrl, atlasInfo);
-            }
+            var result = await webRequest.SendWebRequest ();
+            AtlasManager.AtlasInfo atlasInfo = atlasManager.AddIconTextureToAtlas (DownloadHandlerTexture.GetContent (webRequest));
+            _listenersData.UpdateProfileImage (channelId, imageUrl, atlasInfo);
+
             webRequest.Dispose ();
         }
 
-        private void SetLiveStreamingStatus (Json.LiveStreamingDetails.SerializedItems serializedItems) {
-            _liveStatus.SetLiveStreamingStatus (serializedItems);
-            _databaseController.AddLive (_liveStatus);
-        }
+        private void SetLiveStreamingStatus (Json.LiveStreamingDetails.SerializedItems serializedItems) { _liveStatus.SetLiveStreamingStatus (serializedItems); }
 
         private void SetLiveStreamingDetails (Json.LiveStreamingDetails.SerializedItems serializedItems) { _liveStatus.SetLiveStreamingDetails (serializedItems); }
 
-        private void SetChannelDetails (Json.ChannelDetails.SerializedItems serializedItems) { _liveStatus.SetChannelDetails (serializedItems); }
+        private void SetChannelDetails (Json.ChannelDetails.SerializedItems serializedItems) {
+            _liveStatus.SetChannelDetails (serializedItems);
+            _databaseController.AddLive (_liveStatus);
+        }
 
         private void SetChatId (Json.LiveStreamingDetails.SerializedItems serializedItems) { APIData.chatId = serializedItems.items[0].liveStreamingDetails.activeLiveChatId; }
 

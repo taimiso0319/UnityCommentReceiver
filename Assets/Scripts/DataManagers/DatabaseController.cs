@@ -4,7 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using SQLite4Unity3d;
+using UniRx;
+using UniRx.Async;
 using UnityEngine;
 using YouTubeLive.Json;
 
@@ -13,9 +17,19 @@ namespace YouTubeLive {
 		private readonly string dbName = "youtubelive.db";
 		private SQLiteConnection dbConnector;
 		public DatabaseController () {
-			string path = Application.persistentDataPath + "/" + dbName;
-			Debug.Log (path);
-			dbConnector = new SQLiteConnection (path, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
+			if (!Directory.Exists (FilePath)) { Directory.CreateDirectory (FilePath); }
+			dbConnector = new SQLiteConnection (Path.Combine (FilePath, dbName), SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
+			InitializeDatabase (); //なければつくる。
+		}
+
+		private static string FilePath {
+			get {
+#if !UNITY_STANDALONE_WIN && !UNITY_EDITOR
+				return Application.persistentDataPath;
+#else
+				return "./Database/";
+#endif
+			}
 		}
 
 		public void InitializeDatabase () {
@@ -38,12 +52,12 @@ namespace YouTubeLive {
 			dbConnector.DropTable<T> ();
 		}
 
-		private void AddData<T> (T data) {
-			dbConnector.Insert (data);
+		async Task AddData<T> (T data) {
+			await Task.Run (() => dbConnector.Insert (data));
 		}
 
-		private void AddDatas<T> (T[] datas) {
-			dbConnector.InsertAll (datas);
+		async Task AddDatas<T> (T[] datas) {
+			await Task.Run (() => dbConnector.InsertAll (datas));
 		}
 
 		#region Update
@@ -75,24 +89,23 @@ namespace YouTubeLive {
 		#region Insert
 		public void AddListenerData (string listenerId) {
 			if (!IsListenerDataExists (listenerId)) {
-				AddData<DatabaseTableModel.ListenerData> (
+				Task.Run (() => AddData<DatabaseTableModel.ListenerData> (
 					new DatabaseTableModel.ListenerData {
 						listenerChannelId = listenerId,
 							createdAt = DateTime.UtcNow,
 							updatedAt = DateTime.UtcNow
-					});
+					}));
 			}
 		}
-
 		public void AddChannel (string channelUniqueId, string channelTitle, bool updateTitle = false) {
 			if (!IsChannelExists (channelUniqueId)) {
-				AddData<DatabaseTableModel.Channel> (
+				Task.Run (() => AddData<DatabaseTableModel.Channel> (
 					new DatabaseTableModel.Channel {
 						uniqueId = channelUniqueId,
 							channelTitle = channelTitle,
 							updatedAt = DateTime.UtcNow,
 							createdAt = DateTime.UtcNow
-					});
+					}));
 				return;
 			}
 
@@ -110,14 +123,14 @@ namespace YouTubeLive {
 				AddChannel (liveStatus);
 			}
 			if (!IsLiveExists (liveStatus.videoId)) {
-				AddData<DatabaseTableModel.Live> (
+				Task.Run (() => AddData<DatabaseTableModel.Live> (
 					new DatabaseTableModel.Live {
 						videoId = liveStatus.videoId,
 							channelUniqueId = liveStatus.channelId,
 							liveTitle = liveStatus.liveTitle,
 							publishedAt = DateTime.Parse (Regex.Replace (liveStatus.livePublishedAt, @"\..*", "Z"), null, System.Globalization.DateTimeStyles.RoundtripKind),
 							createdAt = DateTime.UtcNow
-					});
+					}));
 			}
 
 			if (updateTitle) {
@@ -125,7 +138,7 @@ namespace YouTubeLive {
 			}
 		}
 
-		public void AddComment (string videoId, CommentStatus commentStatus) {
+		public void AddComment (string videoId, CommentStatus[] commentStatus) {
 			string channelId = GetLiveChannelId (videoId);
 			if (channelId == null) {
 				return;
@@ -133,39 +146,41 @@ namespace YouTubeLive {
 			AddComment (channelId, videoId, commentStatus);
 		}
 
-		public void AddComment (string channelId, string videoId, CommentStatus commentStatus) {
+		public void AddComment (string channelId, string videoId, CommentStatus[] commentStatus) {
 			string message = "";
 			bool isSuperChat = false;
 			int liveId = GetLiveId (videoId);
-			if (!IsListenerDataExists (commentStatus.channelId)) {
-				AddListenerData (commentStatus.channelId);
+			DatabaseTableModel.Comment[] data = new DatabaseTableModel.Comment[commentStatus.Length];
+			for (int i = 0; i < commentStatus.Length; i++) {
+				if (commentStatus[i].type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) {
+					message = commentStatus[i].userComment;
+					isSuperChat = true;
+				} else {
+					message = commentStatus[i].displayMessage;
+				}
+				data[i] =
+					new DatabaseTableModel.Comment {
+						uniqueId = commentStatus[i].id,
+							channelId = channelId,
+							liveId = liveId,
+							listenerChannelId = commentStatus[i].channelId,
+							isSuperChat = isSuperChat,
+							messageText = message,
+							publishedAt = DateTime.Parse (Regex.Replace (commentStatus[i].publishedAt, @"\..*", "Z"), null, System.Globalization.DateTimeStyles.RoundtripKind),
+							createdAt = DateTime.UtcNow
+					};
+				if (isSuperChat) {
+					int commentId = GetCommentId (commentStatus[i].id);
+					AddSuperChat (channelId, liveId, commentStatus[i]);
+				}
 			}
-			if (commentStatus.type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) {
-				message = commentStatus.userComment;
-				isSuperChat = true;
-			} else {
-				message = commentStatus.displayMessage;
-			}
-			AddData<DatabaseTableModel.Comment> (
-				new DatabaseTableModel.Comment {
-					uniqueId = commentStatus.id,
-						channelId = channelId,
-						liveId = liveId,
-						listenerChannelId = commentStatus.channelId,
-						isSuperChat = isSuperChat,
-						messageText = message,
-						publishedAt = DateTime.Parse (Regex.Replace (commentStatus.publishedAt, @"\..*", "Z"), null, System.Globalization.DateTimeStyles.RoundtripKind),
-						createdAt = DateTime.UtcNow
-				});
-			if (isSuperChat) {
-				int commentId = GetCommentId (commentStatus.id);
-				AddSuperChat (channelId, liveId, commentStatus);
-			}
+			Task.Run (() => AddDatas<DatabaseTableModel.Comment> (data));
+
 		}
 
 		public void AddSuperChat (string channelId, int liveId, CommentStatus commentStatus) {
 			int commentId = GetCommentId (commentStatus.id);
-			AddData<DatabaseTableModel.SuperChat> (
+			Task.Run (() => AddData<DatabaseTableModel.SuperChat> (
 				new DatabaseTableModel.SuperChat {
 					listenerChannelId = commentStatus.channelId,
 						commentId = commentId,
@@ -176,7 +191,7 @@ namespace YouTubeLive {
 						// TODO: convertedAmount~~~~~~~~~~~~
 						createdAt = DateTime.UtcNow
 				}
-			);
+			));
 		}
 		#endregion Insert
 
@@ -292,19 +307,23 @@ namespace YouTubeLive {
 
 		#region CheckExistence
 		private bool IsChannelExists (string channelId) {
-			return dbConnector.Table<DatabaseTableModel.Channel> ().Any (x => x.uniqueId == channelId);
+			if (dbConnector.Query<DatabaseTableModel.Channel> ("SELECT * FROM Channel WHERE uniqueId='" + channelId + "';").FirstOrDefault () == null) { return false; }
+			return true;
 		}
 
 		private bool IsLiveExists (string videoId) {
-			return dbConnector.Table<DatabaseTableModel.Live> ().Any (x => x.videoId == videoId);
+			if (dbConnector.Query<DatabaseTableModel.Live> ("SELECT * FROM Live WHERE videoId='" + videoId + "';").FirstOrDefault () == null) { return false; }
+			return true;
 		}
 
 		private bool IsListenerDataExists (string listenerChannelId) {
-			return dbConnector.Table<DatabaseTableModel.ListenerData> ().Any (x => x.listenerChannelId == listenerChannelId);
+			if (dbConnector.Query<DatabaseTableModel.ListenerData> ("SELECT * FROM ListenerData WHERE listenerChannelId='" + listenerChannelId + "';").FirstOrDefault () == null) { return false; }
+			return true;
 		}
 
 		private bool IsCommentExists (string uniqueId) {
-			return dbConnector.Table<DatabaseTableModel.Comment> ().Any (x => x.uniqueId == uniqueId);
+			if (dbConnector.Query<DatabaseTableModel.Comment> ("SELECT * FROM Comment WHERE uniqueId='" + uniqueId + "';").FirstOrDefault () == null) { return false; }
+			return true;
 		}
 		#endregion
 	}
