@@ -57,6 +57,12 @@ namespace YouTubeLive {
             _databaseController = new DatabaseController ();
         }
 
+        [ContextMenu ("DisconnectDB")]
+        public void DisconnectDB () {
+            _databaseController.DisconnectDatabase ();
+            _databaseController = null;
+        }
+
         [ContextMenu ("InitDB")]
         public void InitDB () {
             if (_databaseController == null) { ConnectDB (); }
@@ -229,6 +235,7 @@ namespace YouTubeLive {
                 yield break;
             }
             float waitSeconds = (float) TimeSpan.FromMilliseconds (pollingIntervalMillis).TotalSeconds;
+            Debug.Log (waitSeconds);
             yield return new WaitForSeconds (waitSeconds);
             pollingIntervalMillis = 0;
             string chatURI = APIData.ChatURI ();
@@ -246,6 +253,7 @@ namespace YouTubeLive {
             if (serializedItems.items != null) {
                 if (serializedItems.items.Length == 0) {
                     noItemsRespondCount++;
+                    pollingIntervalMillis = defaultPollingIntervalMillis;
                     if (noItemsRespondCount >= noItemsRespondLimit) {
                         noItemsRespondCount = 0;
                         currentCheckCoroutine = StartCoroutine (GetVideoDetails ());

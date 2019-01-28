@@ -40,6 +40,10 @@ namespace YouTubeLive {
 			dbConnector.CreateTable<DatabaseTableModel.SuperChat> ();
 		}
 
+		public void DisconnectDatabase () {
+			dbConnector.Close ();
+		}
+
 		public void DropAllTables () {
 			dbConnector.DropTable<DatabaseTableModel.ListenerData> ();
 			dbConnector.DropTable<DatabaseTableModel.Channel> ();
@@ -342,8 +346,6 @@ namespace YouTubeLive {
 		public class ListenerData {
 			[PrimaryKey, AutoIncrement]
 			public int id { get; set; }
-
-			[NotNull]
 			public string listenerChannelId { get; set; }
 
 			[NotNull]
@@ -361,17 +363,9 @@ namespace YouTubeLive {
 		public class Comment {
 			[PrimaryKey, AutoIncrement]
 			public int id { get; set; }
-
-			[NotNull]
 			public string uniqueId { get; set; }
-
-			[NotNull]
 			public string channelId { get; set; }
-
-			[NotNull]
 			public int liveId { get; set; }
-
-			[NotNull]
 			public string listenerChannelId { get; set; }
 			public bool isSuperChat { get; set; }
 			public string messageText { get; set; }
@@ -389,17 +383,9 @@ namespace YouTubeLive {
 		public class SuperChat {
 			[PrimaryKey, AutoIncrement]
 			public int id { get; set; }
-
-			[NotNull]
 			public string listenerChannelId { get; set; }
-
-			[NotNull]
 			public string commentUniqueId { get; set; }
-
-			[NotNull]
 			public string channelId { get; set; }
-
-			[NotNull]
 			public int liveId { get; set; }
 			public string currency { get; set; }
 			public string amount { get; set; }
@@ -416,8 +402,6 @@ namespace YouTubeLive {
 		public class Live {
 			[PrimaryKey, AutoIncrement]
 			public int id { get; set; }
-
-			[NotNull]
 			public string videoId { get; set; }
 			public string channelUniqueId { get; set; }
 			public string liveTitle { get; set; }
@@ -435,8 +419,6 @@ namespace YouTubeLive {
 		public class Channel {
 			[PrimaryKey, AutoIncrement]
 			public int id { get; set; }
-
-			[NotNull]
 			public string uniqueId { get; set; }
 			public string channelTitle { get; set; }
 
