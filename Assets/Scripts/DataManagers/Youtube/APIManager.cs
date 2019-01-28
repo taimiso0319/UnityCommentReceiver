@@ -69,9 +69,17 @@ namespace YouTubeLive {
             databaseController.DropAllTables ();
         }
 
-        [ContextMenu ("ShowDatabaseData")]
+        [ContextMenu ("ShowCommentData")]
         public void ShowCommentData () {
             var data = databaseController.GetComments ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
+        [ContextMenu ("ShowLiveData")]
+        public void ShowLiveData () {
+            var data = databaseController.GetLives ();
             foreach (var d in data) {
                 Debug.Log (d.ToString ());
             }

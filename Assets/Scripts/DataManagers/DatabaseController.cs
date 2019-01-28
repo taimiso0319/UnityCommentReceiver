@@ -177,7 +177,6 @@ namespace YouTubeLive {
 							createdAt = DateTime.UtcNow
 					};
 				if (isSuperChat) {
-					int commentId = GetCommentId (commentStatus[i].id);
 					AddSuperChat (channelId, liveId, commentStatus[i]);
 				}
 			}
@@ -186,11 +185,10 @@ namespace YouTubeLive {
 		}
 
 		public void AddSuperChat (string channelId, int liveId, CommentStatus commentStatus) {
-			int commentId = GetCommentId (commentStatus.id);
 			Task.Run (() => AddData<DatabaseTableModel.SuperChat> (
 				new DatabaseTableModel.SuperChat {
 					listenerChannelId = commentStatus.channelId,
-						commentId = commentId,
+						commentUniqueId = commentStatus.id,
 						channelId = channelId,
 						liveId = liveId,
 						currency = commentStatus.currency,
@@ -246,7 +244,7 @@ namespace YouTubeLive {
 			int liveId = GetLiveId (videoId);
 			return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.liveId == liveId);
 		}
-		public DatabaseTableModel.SuperChat GetSuperChatByComment (int commentId) { return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.commentId == commentId).FirstOrDefault (); }
+		public DatabaseTableModel.SuperChat GetSuperChatByComment (string commentUniqueId) { return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.commentUniqueId == commentUniqueId).FirstOrDefault (); }
 		/// <summary>
 		/// チャンネルの累計スーパーチャット金額を返します。
 		/// 為替などの影響があるため、記録上の数値であり正確な数字ではありません。
@@ -396,7 +394,7 @@ namespace YouTubeLive {
 			public string listenerChannelId { get; set; }
 
 			[NotNull]
-			public int commentId { get; set; }
+			public string commentUniqueId { get; set; }
 
 			[NotNull]
 			public string channelId { get; set; }
@@ -410,8 +408,8 @@ namespace YouTubeLive {
 			[NotNull]
 			public DateTime createdAt { get; set; }
 			public override string ToString () {
-				return string.Format ("[SuperChat: id={0}, listernerId={1}, currency={2},  amount={3}, convertedAmount={4}, createdAt={5}]",
-					id, listenerChannelId, currency, amount, convertedAmount, createdAt);
+				return string.Format ("[SuperChat: id={0}, listernerId={1}, commentUniqueId={2}, currency={3},  amount={4}, convertedAmount={5}, createdAt={6}]",
+					id, listenerChannelId, commentUniqueId, currency, amount, convertedAmount, createdAt);
 			}
 		}
 
