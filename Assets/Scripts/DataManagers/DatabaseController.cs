@@ -66,7 +66,8 @@ namespace YouTubeLive {
 		}
 
 		public void UpdateChannelTitle (string channelUniqueId, string channelTitle, bool orInsert = false) {
-			if (!IsChannelExists (channelUniqueId)) {
+			bool isExists = Task.Run (() => IsChannelExists (channelUniqueId)).Result;
+			if (!isExists) {
 				DatabaseTableModel.Channel channel = GetChannel (channelUniqueId);
 				channel.channelTitle = channelTitle;
 				dbConnector.Update (channel);
@@ -77,7 +78,8 @@ namespace YouTubeLive {
 			}
 		}
 		public void UpdateLiveTitle (string videoId, string liveTitle) {
-			if (!IsLiveExists (videoId)) {
+			bool isExists = Task.Run (() => IsLiveExists (videoId)).Result;
+			if (!isExists) {
 				DatabaseTableModel.Live live = GetLive (videoId);
 				live.liveTitle = liveTitle;
 				dbConnector.Update (live);
@@ -88,7 +90,8 @@ namespace YouTubeLive {
 
 		#region Insert
 		public void AddListenerData (string listenerId) {
-			if (!IsListenerDataExists (listenerId)) {
+			bool isExists = Task.Run (() => IsListenerDataExists (listenerId)).Result;
+			if (!isExists) {
 				Task.Run (() => AddData<DatabaseTableModel.ListenerData> (
 					new DatabaseTableModel.ListenerData {
 						listenerChannelId = listenerId,
@@ -97,8 +100,10 @@ namespace YouTubeLive {
 					}));
 			}
 		}
+
 		public void AddChannel (string channelUniqueId, string channelTitle, bool updateTitle = false) {
-			if (!IsChannelExists (channelUniqueId)) {
+			bool isExists = Task.Run (() => IsChannelExists (channelUniqueId)).Result;
+			if (!isExists) {
 				Task.Run (() => AddData<DatabaseTableModel.Channel> (
 					new DatabaseTableModel.Channel {
 						uniqueId = channelUniqueId,
@@ -119,10 +124,12 @@ namespace YouTubeLive {
 		}
 
 		public void AddLive (LiveStatus liveStatus, bool updateTitle = false) {
-			if (!IsChannelExists (liveStatus.channelId)) {
+			bool isChannelExists = Task.Run (() => IsChannelExists (liveStatus.channelId)).Result;
+			if (!isChannelExists) {
 				AddChannel (liveStatus);
 			}
-			if (!IsLiveExists (liveStatus.videoId)) {
+			bool isLiveExists = Task.Run (() => IsLiveExists (liveStatus.videoId)).Result;
+			if (!isLiveExists) {
 				Task.Run (() => AddData<DatabaseTableModel.Live> (
 					new DatabaseTableModel.Live {
 						videoId = liveStatus.videoId,
@@ -148,10 +155,10 @@ namespace YouTubeLive {
 
 		public void AddComment (string channelId, string videoId, CommentStatus[] commentStatus) {
 			string message = "";
-			bool isSuperChat = false;
 			int liveId = GetLiveId (videoId);
 			DatabaseTableModel.Comment[] data = new DatabaseTableModel.Comment[commentStatus.Length];
 			for (int i = 0; i < commentStatus.Length; i++) {
+				bool isSuperChat = false;
 				if (commentStatus[i].type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) {
 					message = commentStatus[i].userComment;
 					isSuperChat = true;
@@ -306,23 +313,27 @@ namespace YouTubeLive {
 		#endregion Get
 
 		#region CheckExistence
-		private bool IsChannelExists (string channelId) {
-			if (dbConnector.Query<DatabaseTableModel.Channel> ("SELECT * FROM Channel WHERE uniqueId='" + channelId + "';").FirstOrDefault () == null) { return false; }
+		private async Task<bool> IsChannelExists (string channelId) {
+			DatabaseTableModel.Channel data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.Channel> ("SELECT * FROM Channel WHERE uniqueId='" + channelId + "';").FirstOrDefault ());
+			if (data == null) { return false; }
 			return true;
 		}
 
-		private bool IsLiveExists (string videoId) {
-			if (dbConnector.Query<DatabaseTableModel.Live> ("SELECT * FROM Live WHERE videoId='" + videoId + "';").FirstOrDefault () == null) { return false; }
+		private async Task<bool> IsLiveExists (string videoId) {
+			DatabaseTableModel.Live data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.Live> ("SELECT * FROM Live WHERE videoId='" + videoId + "';").FirstOrDefault ());
+			if (data == null) { return false; }
 			return true;
 		}
 
-		private bool IsListenerDataExists (string listenerChannelId) {
-			if (dbConnector.Query<DatabaseTableModel.ListenerData> ("SELECT * FROM ListenerData WHERE listenerChannelId='" + listenerChannelId + "';").FirstOrDefault () == null) { return false; }
+		private async Task<bool> IsListenerDataExists (string listenerChannelId) {
+			DatabaseTableModel.ListenerData data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.ListenerData> ("SELECT * FROM ListenerData WHERE listenerChannelId='" + listenerChannelId + "';").FirstOrDefault ());
+			if (data == null) { return false; }
 			return true;
 		}
 
-		private bool IsCommentExists (string uniqueId) {
-			if (dbConnector.Query<DatabaseTableModel.Comment> ("SELECT * FROM Comment WHERE uniqueId='" + uniqueId + "';").FirstOrDefault () == null) { return false; }
+		private async Task<bool> IsCommentExists (string uniqueId) {
+			DatabaseTableModel.Comment data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.Comment> ("SELECT * FROM Comment WHERE uniqueId='" + uniqueId + "';").FirstOrDefault ());
+			if (data == null) { return false; }
 			return true;
 		}
 		#endregion
