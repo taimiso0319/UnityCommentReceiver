@@ -235,7 +235,6 @@ namespace YouTubeLive {
                 yield break;
             }
             float waitSeconds = (float) TimeSpan.FromMilliseconds (pollingIntervalMillis).TotalSeconds;
-            Debug.Log (waitSeconds);
             yield return new WaitForSeconds (waitSeconds);
             pollingIntervalMillis = 0;
             string chatURI = APIData.ChatURI ();
