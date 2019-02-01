@@ -50,6 +50,11 @@ namespace YouTubeLive {
 			return baseURI + videos + partSnippet + byId + videoId + searchType + apiKeyBase + apiKey;
 		}
 
+		public static string ChannelURI (string id) {
+			if (apiKey.Equals ("")) { return null; }
+			return baseURI + channels + partSnippet + byId + id + apiKeyBase + apiKey;
+		}
+
 		public static string ChannelDetailsURI () {
 			if (apiKey.Equals ("") || channelId.Equals ("")) { return null; }
 			return baseURI + channels + partStatistics + byId + channelId + apiKeyBase + apiKey;

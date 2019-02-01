@@ -45,7 +45,7 @@ namespace YouTubeLive {
 		public string messageText;
 		public string currency;
 		public string amountDisplayString;
-		public string userComment;
+		public int convertedAmount;
 		public int tier;
 		public string publishedAt;
 		public bool hasDisplayContent;
@@ -64,11 +64,15 @@ namespace YouTubeLive {
 			channelId = items.authorDetails.channelId;
 			displayName = items.authorDetails.displayName;
 			displayMessage = items.snippet.displayMessage;
-			messageText = items.snippet.textMessageDetails.messageText;
-			currency = items.snippet.superChatDetails.currency;
-			amountDisplayString = items.snippet.superChatDetails.amountDisplayString;
-			userComment = items.snippet.superChatDetails.userComment;
-			tier = items.snippet.superChatDetails.tier;
+			if (type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) {
+				messageText = items.snippet.superChatDetails.userComment;
+				currency = items.snippet.superChatDetails.currency;
+				amountDisplayString = items.snippet.superChatDetails.amountDisplayString;
+				convertedAmount = items.snippet.superChatDetails.convertedAmount;
+				tier = items.snippet.superChatDetails.tier;
+			} else {
+				messageText = items.snippet.textMessageDetails.messageText;
+			}
 			publishedAt = items.snippet.publishedAt;
 			hasDisplayContent = items.snippet.hasDisplayContent;
 			isVerified = items.authorDetails.isVerified;
@@ -89,9 +93,9 @@ namespace YouTubeLive {
 				displayName.Equals (other.displayName) &&
 				displayMessage.Equals (other.displayMessage) &&
 				messageText.Equals (other.messageText) &&
+				convertedAmount.Equals (other.convertedAmount) &&
 				currency.Equals (other.currency) &&
 				amountDisplayString.Equals (other.amountDisplayString) &&
-				userComment.Equals (other.userComment) &&
 				tier.Equals (other.tier) &&
 				publishedAt.Equals (other.publishedAt) &&
 				hasDisplayContent.Equals (other.hasDisplayContent) &&
@@ -107,11 +111,11 @@ namespace YouTubeLive {
 				hashCode = (hashCode * 397) ^ id.GetHashCode ();
 				hashCode = (hashCode * 397) ^ channelId.GetHashCode ();
 				hashCode = (hashCode * 397) ^ displayName.GetHashCode ();
+				hashCode = (hashCode * 397) ^ convertedAmount.GetHashCode ();
 				if (!string.IsNullOrEmpty (displayMessage)) { hashCode = (hashCode * 397) ^ displayMessage.GetHashCode (); }
 				if (!string.IsNullOrEmpty (messageText)) { hashCode = (hashCode * 397) ^ messageText.GetHashCode (); }
 				if (!string.IsNullOrEmpty (currency)) { hashCode = (hashCode * 397) ^ currency.GetHashCode (); }
 				if (!string.IsNullOrEmpty (amountDisplayString)) { hashCode = (hashCode * 397) ^ amountDisplayString.GetHashCode (); }
-				if (!string.IsNullOrEmpty (userComment)) { hashCode = (hashCode * 397) ^ userComment.GetHashCode (); }
 				hashCode = (hashCode * 397) ^ publishedAt.GetHashCode ();
 				return hashCode ^ tier.GetHashCode () ^ (hasDisplayContent.GetHashCode () << 1) ^ (isVerified.GetHashCode () << 2) ^ (isChatOwner.GetHashCode () << 3) ^ (isChatSponsor.GetHashCode () << 4) ^ (isChatModerator.GetHashCode () << 5);
 			}

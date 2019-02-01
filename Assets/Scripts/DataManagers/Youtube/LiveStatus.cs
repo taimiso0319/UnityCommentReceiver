@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using YouTubeLive.Json;
 using YouTubeLive.Json.LiveStreamingDetails;
 namespace YouTubeLive {
 	public class LiveStatus : MonoBehaviour {

@@ -1,17 +1,16 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
-public class SingletonMonoBehaviour<T> : MonoBehaviour where T : SingletonMonoBehaviour<T>
-{
+public class SingletonMonoBehaviour<T> : MonoBehaviour where T : SingletonMonoBehaviour<T> {
 	protected static T instance;
 
 	public static T Instance {
 		get {
 			if (instance == null) {
-				instance = (T)FindObjectOfType (typeof(T));
+				instance = (T) FindObjectOfType (typeof (T));
 
 				if (instance == null) {
-					Debug.LogWarning (typeof(T) + "is nothing");
+					Debug.LogWarning (typeof (T) + "is nothing");
 				}
 			}
 
@@ -19,15 +18,13 @@ public class SingletonMonoBehaviour<T> : MonoBehaviour where T : SingletonMonoBe
 		}
 	}
 
-	protected void Awake ()
-	{
+	protected void Awake () {
 		CheckInstance ();
 	}
 
-	protected bool CheckInstance ()
-	{
+	protected bool CheckInstance () {
 		if (instance == null) {
-			instance = (T)this;
+			instance = (T) this;
 			return true;
 		} else if (Instance == this) {
 			return true;

@@ -4,17 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 namespace YouTubeLive.UI {
-	public class SuperChatElement : MonoBehaviour {
-		[SerializeField] private RawImage _icon = null;
-		public RawImage icon {
-			get { return _icon; }
-		}
-
-		[SerializeField] private Text _name = null;
-		public Text name {
-			get { return _name; }
-		}
-
+	public class SuperChatElement : Element {
 		[SerializeField] private Text _message = null;
 		public Text message {
 			get { return _message; }
@@ -23,10 +13,6 @@ namespace YouTubeLive.UI {
 		[SerializeField] private Text _superChatAmount = null;
 		public Text superChatAmount {
 			get { return _superChatAmount; }
-		}
-
-		public void SetName (string s) {
-			this._name.text = s;
 		}
 
 		public void SetMessage (string s) {
@@ -45,12 +31,6 @@ namespace YouTubeLive.UI {
 			this._superChatAmount.text = f.ToString ();
 		}
 
-		public void SetIcon (Texture2D tex, Rect uv) {
-			this._icon.texture = tex;
-			this._icon.uvRect = uv;
-		}
-
-		[ContextMenu ("testa")]
 		public void AdjustHeight () {
 			int lineCount = _message.cachedTextGenerator.lineCount;
 			if (lineCount > 3) {

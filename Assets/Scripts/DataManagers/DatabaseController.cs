@@ -71,7 +71,7 @@ namespace YouTubeLive {
 
 		public void UpdateChannelTitle (string channelUniqueId, string channelTitle, bool orInsert = false) {
 			bool isExists = Task.Run (() => IsChannelExists (channelUniqueId)).Result;
-			if (!isExists) {
+			if (isExists) {
 				DatabaseTableModel.Channel channel = GetChannel (channelUniqueId);
 				channel.channelTitle = channelTitle;
 				dbConnector.Update (channel);
@@ -83,7 +83,7 @@ namespace YouTubeLive {
 		}
 		public void UpdateLiveTitle (string videoId, string liveTitle) {
 			bool isExists = Task.Run (() => IsLiveExists (videoId)).Result;
-			if (!isExists) {
+			if (isExists) {
 				DatabaseTableModel.Live live = GetLive (videoId);
 				live.liveTitle = liveTitle;
 				dbConnector.Update (live);
@@ -162,13 +162,8 @@ namespace YouTubeLive {
 			int liveId = GetLiveId (videoId);
 			DatabaseTableModel.Comment[] data = new DatabaseTableModel.Comment[commentStatus.Length];
 			for (int i = 0; i < commentStatus.Length; i++) {
-				bool isSuperChat = false;
-				if (commentStatus[i].type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) {
-					message = commentStatus[i].userComment;
-					isSuperChat = true;
-				} else {
-					message = commentStatus[i].displayMessage;
-				}
+				bool isSuperChat = (commentStatus[i].type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ());
+				message = commentStatus[i].messageText;
 				data[i] =
 					new DatabaseTableModel.Comment {
 						uniqueId = commentStatus[i].id,
@@ -189,6 +184,8 @@ namespace YouTubeLive {
 		}
 
 		public void AddSuperChat (string channelId, int liveId, CommentStatus commentStatus) {
+			bool isExists = Task.Run (() => IsSuperChatExists (commentStatus.id)).Result;
+			if (isExists) { return; }
 			Task.Run (() => AddData<DatabaseTableModel.SuperChat> (
 				new DatabaseTableModel.SuperChat {
 					listenerChannelId = commentStatus.channelId,
@@ -197,7 +194,7 @@ namespace YouTubeLive {
 						liveId = liveId,
 						currency = commentStatus.currency,
 						amount = commentStatus.amountDisplayString,
-						// TODO: convertedAmount~~~~~~~~~~~~
+						convertedAmount = commentStatus.convertedAmount,
 						createdAt = DateTime.UtcNow
 				}
 			));
@@ -224,19 +221,25 @@ namespace YouTubeLive {
 			return comment.id;
 		}
 		public IEnumerable<DatabaseTableModel.Comment> GetCommentsByListener (string listenerChannelId) { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.listenerChannelId == listenerChannelId); }
-		public IEnumerable<DatabaseTableModel.Comment> GetCommentsByListener (string listenerChannelId, string channelId) { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.listenerChannelId == listenerChannelId && x.channelId == channelId); }
+		public IEnumerable<DatabaseTableModel.Comment> GetCommentsByListenerAtChannel (string channelId, string listenerChannelId) { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.listenerChannelId == listenerChannelId && x.channelId == channelId); }
 		public IEnumerable<DatabaseTableModel.Comment> GetComments (int liveId) { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.liveId == liveId); }
 		public IEnumerable<DatabaseTableModel.Comment> GetComments (string videoId) {
 			int liveId = GetLiveId (videoId);
 			return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.liveId == liveId);
+		}
+		public int GetTotalCommentByListenerAtChannel (string channelId, string listenerChannelId) {
+			IEnumerable<DatabaseTableModel.Comment> datas = GetCommentsByListenerAtChannel (channelId, listenerChannelId);
+			if (datas == null) return 0;
+			return datas.Count ();
 		}
 		public IEnumerable<DatabaseTableModel.Comment> GetSuperChatComments () { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.isSuperChat == true); }
 		public IEnumerable<DatabaseTableModel.Comment> GetSuperChatCommentsByVideo (string videoId) {
 			int liveId = GetLiveId (videoId);
 			return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.isSuperChat == true && x.liveId == liveId);
 		}
+
 		public IEnumerable<DatabaseTableModel.Comment> GetSuperChatCommentsByListener (string listenerChannelId) { return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.isSuperChat == true && x.listenerChannelId == listenerChannelId); }
-		public IEnumerable<DatabaseTableModel.Comment> GetSuperChatCommentsByListener (string listenerChannelId, string videoId) {
+		public IEnumerable<DatabaseTableModel.Comment> GetSuperChatCommentsByListenerInVideo (string listenerChannelId, string videoId) {
 			int liveId = GetLiveId (videoId);
 			return dbConnector.Table<DatabaseTableModel.Comment> ().Where (x => x.isSuperChat == true && x.listenerChannelId == listenerChannelId && x.liveId == liveId);
 		}
@@ -247,6 +250,9 @@ namespace YouTubeLive {
 		public IEnumerable<DatabaseTableModel.SuperChat> GetSuperChatsByVideo (string videoId) {
 			int liveId = GetLiveId (videoId);
 			return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.liveId == liveId);
+		}
+		public IEnumerable<DatabaseTableModel.SuperChat> GetSuperChatByListenerAtChannel (string channelId, string listenerChannelId) {
+			return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.listenerChannelId == listenerChannelId && x.channelId == channelId);
 		}
 		public DatabaseTableModel.SuperChat GetSuperChatByComment (string commentUniqueId) { return dbConnector.Table<DatabaseTableModel.SuperChat> ().Where (x => x.commentUniqueId == commentUniqueId).FirstOrDefault (); }
 		/// <summary>
@@ -275,6 +281,16 @@ namespace YouTubeLive {
 			}
 			return amount;
 		}
+
+		public int GetSuperChatsAmountByListenerAtChannel (string channelId, string listenerId) {
+			var data = GetSuperChatByListenerAtChannel (channelId, listenerId);
+			int amount = 0;
+			foreach (var s in data) {
+				amount += s.convertedAmount;
+			}
+			return amount;
+		}
+
 		#endregion SuperChat
 
 		#region Live
@@ -335,6 +351,12 @@ namespace YouTubeLive {
 
 		private async Task<bool> IsCommentExists (string uniqueId) {
 			DatabaseTableModel.Comment data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.Comment> ("SELECT * FROM Comment WHERE uniqueId='" + uniqueId + "';").FirstOrDefault ());
+			if (data == null) { return false; }
+			return true;
+		}
+
+		private async Task<bool> IsSuperChatExists (string commentUniqueId) {
+			DatabaseTableModel.SuperChat data = await Task.Run (() => dbConnector.Query<DatabaseTableModel.SuperChat> ("SELECT * FROM SuperChat WHERE commentUniqueId='" + commentUniqueId + "';").FirstOrDefault ());
 			if (data == null) { return false; }
 			return true;
 		}

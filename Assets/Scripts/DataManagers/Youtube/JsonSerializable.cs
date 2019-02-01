@@ -51,30 +51,6 @@ namespace YouTubeLive.Json {
             public string concurrentViewers;
             public string activeLiveChatId;
         }
-
-        [Serializable]
-        public class Thumbnails {
-            public enum ThumbnailsType {
-                DEFAULT = 0,
-                MEDIUM,
-                HIGH,
-                STANDARD,
-                MAXRES
-            }
-
-            public ThumbnailsDetails @default;
-            public ThumbnailsDetails medium;
-            public ThumbnailsDetails high;
-            public ThumbnailsDetails standard;
-            public ThumbnailsDetails maxres;
-        }
-
-        [Serializable]
-        public class ThumbnailsDetails {
-            public string url;
-            public int width;
-            public int hight;
-        }
     }
 
     namespace ChatDetails {
@@ -137,6 +113,7 @@ namespace YouTubeLive.Json {
             public string amountMicros;
             public string currency;
             public string amountDisplayString;
+            public int convertedAmount;
             public string userComment;
             public int tier;
         }
@@ -163,6 +140,49 @@ namespace YouTubeLive.Json {
             public bool hiddenSubscriberCount;
             public string videoCount;
         }
+    }
+
+    namespace Channel {
+        [Serializable]
+        public class SerializedItems {
+            public Items[] items;
+        }
+
+        [Serializable]
+        public class Items {
+            public Snippet snippet;
+        }
+
+        [Serializable]
+        public class Snippet {
+            public string title;
+            public Thumbnails thumbnails;
+        }
+
+    }
+
+    [Serializable]
+    public class Thumbnails {
+        public enum ThumbnailsType {
+            DEFAULT = 0,
+            MEDIUM,
+            HIGH,
+            STANDARD,
+            MAXRES
+        }
+
+        public ThumbnailsDetails @default;
+        public ThumbnailsDetails medium;
+        public ThumbnailsDetails high;
+        public ThumbnailsDetails standard;
+        public ThumbnailsDetails maxres;
+    }
+
+    [Serializable]
+    public class ThumbnailsDetails {
+        public string url;
+        public int width;
+        public int hight;
     }
 
     [Serializable]

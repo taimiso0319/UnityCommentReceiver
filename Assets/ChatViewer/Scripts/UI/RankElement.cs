@@ -4,43 +4,61 @@ using UnityEngine;
 using UnityEngine.UI;
 
 namespace YouTubeLive.UI {
-	public class RankElement : MonoBehaviour {
-		[SerializeField] private Text name;
+	public class RankElement : Element {
+		private string _listenerId;
+		public string listenerId { get { return _listenerId; } }
+
 		[SerializeField] private Text attendance;
-		[SerializeField] private Text totalComment;
-		[SerializeField] private Text totalCharge;
+		public int totalComment = 0;
+		[SerializeField] private Text totalCommentText;
+		public int totalCharge = 0;
+		[SerializeField] private Text totalChargeText;
 
 		[SerializeField] private Text activenessText;
 		[SerializeField] private Image activenessBar;
-		private int currentCharge = 0;
+		public int currentCharge = 0;
 		[SerializeField] private Text currentChargeText;
 		[SerializeField] private Image currentChargeBar;
 
 		private static readonly int CHARGE_LIMIT = 50000;
 
-		public void SetName (string name) { this.name.text = name + " さん"; }
+		public void SetListenerId (string id) { _listenerId = id; }
 
 		public void SetAttendance (string attendance) { this.attendance.text = attendance + "回目"; }
+		public void SetAttendance (int attendance) { SetAttendance (attendance.ToString ()); }
 
-		public void SetAttendance (int attendance) { this.attendance.text = attendance.ToString () + "回目"; }
+		public void SetTotalComment (int total) {
+			totalComment = total;
+			UpdateText ();
+		}
 
-		public void SetTotalComment (string total) { this.totalComment.text = total; }
-
-		public void SetTotalComment (int total) { this.totalComment.text = total.ToString (); }
-
-		public void SetTotalCharge (string total) { this.totalCharge.text = total; }
-		public void SetTotalCharge (int total) { this.totalCharge.text = total.ToString (); }
+		public void SetTotalCharge (int total) {
+			totalCharge = total;
+			UpdateText ();
+		}
 
 		public void SetActiveness (int activeness) {
-			this.activenessText.text = activeness.ToString ();
+			activenessText.text = activeness.ToString ();
 			//todo: change fill ratio
 		}
 
 		public void AddCurrentCharge (int amount) {
 			currentCharge += amount;
-			currentChargeBar.fillAmount = currentCharge / CHARGE_LIMIT;
-			currentChargeText.text = currentCharge.ToString ();
+			currentCharge = currentCharge > CHARGE_LIMIT? CHARGE_LIMIT : currentCharge;
+			currentChargeBar.fillAmount = (float) currentCharge / CHARGE_LIMIT;
+			AddTotalCharge (amount);
+		}
 
+		public void AddTotalCharge (int amount) {
+			totalCharge += amount;
+			UpdateText ();
+
+		}
+
+		private void UpdateText () {
+			currentChargeText.text = "￥" + currentCharge.ToString ();
+			totalChargeText.text = "￥" + totalCharge.ToString ();
+			totalCommentText.text = totalComment.ToString ();
 		}
 	}
 }

@@ -6,12 +6,16 @@ using System.Xml.Linq;
 using UnityEngine;
 
 namespace YouTubeLive {
-	public class ListenersData{
+	public class ListenersData {
 
-		List<ListenerData> listenerDataList;
-		
-		public ListenersData(){
+		private List<ListenerData> listenerDataList;
+
+		public ListenersData () {
 			listenerDataList = new List<ListenerData> ();
+		}
+
+		public List<ListenerData> GetList () {
+			return listenerDataList;
 		}
 
 		public bool IsListenerDataExists (string channelId) {
@@ -53,30 +57,32 @@ namespace YouTubeLive {
 		}
 	}
 
-	public class ListenerData : IEquatable<ListenerData>{
+	public class ListenerData : IEquatable<ListenerData> {
 		public string channelId;
+		public string channelTitle;
 		public string profileImageUrl;
 		public AtlasManager.AtlasInfo iconAtlasInfo;
 
-		public ListenerData (string id, string url, AtlasManager.AtlasInfo atlasInfo) {
-			channelId = id;
-			profileImageUrl = url;
-			iconAtlasInfo = atlasInfo;
+		public ListenerData (string id, string title, string url, AtlasManager.AtlasInfo atlasInfo) {
+			this.channelId = id;
+			this.channelTitle = title;
+			this.profileImageUrl = url;
+			this.iconAtlasInfo = atlasInfo;
 		}
 
-		public override bool Equals(object other){
-			if(!(other is ListenerData))return false;
-			return Equals((ListenerData)other); 
+		public override bool Equals (object other) {
+			if (!(other is ListenerData)) return false;
+			return Equals ((ListenerData) other);
 		}
 
-		public bool Equals(ListenerData other){
-			return channelId.Equals(other.channelId) && profileImageUrl.Equals(other.profileImageUrl) && iconAtlasInfo.Equals(other.iconAtlasInfo);
+		public bool Equals (ListenerData other) {
+			return channelId.Equals (other.channelId) && profileImageUrl.Equals (other.profileImageUrl) && iconAtlasInfo.Equals (other.iconAtlasInfo);
 		}
 
-		public override int GetHashCode(){
-			int hashCode = channelId.GetHashCode();
-			hashCode = (hashCode * 397) ^ profileImageUrl.GetHashCode();
-			return hashCode ^ iconAtlasInfo.GetHashCode();
+		public override int GetHashCode () {
+			int hashCode = channelId.GetHashCode ();
+			hashCode = (hashCode * 397) ^ profileImageUrl.GetHashCode ();
+			return hashCode ^ iconAtlasInfo.GetHashCode ();
 		}
 	}
 }

@@ -8,5 +8,8 @@ namespace YouTubeLive.UI {
 		public SuperChatView superChatView {
 			get { return _superChatView; }
 		}
+
+		[SerializeField] private RankView _rankView = null;
+		public RankView rankView { get { return _rankView; } }
 	}
 }
