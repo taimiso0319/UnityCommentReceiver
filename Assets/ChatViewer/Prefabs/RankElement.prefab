@@ -59,7 +59,7 @@ GameObject:
   - component: {fileID: 114427141096580548}
   - component: {fileID: 114526953359256446}
   m_Layer: 5
-  m_Name: TotalCharge
+  m_Name: ChargeTotal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -232,7 +232,7 @@ GameObject:
   - component: {fileID: 114627324398433700}
   - component: {fileID: 114642496291290196}
   m_Layer: 5
-  m_Name: TotalComment
+  m_Name: CommentTotal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -339,10 +339,10 @@ MonoBehaviour:
   _icon: {fileID: 114338188568605576}
   _name: {fileID: 114258907819013320}
   attendance: {fileID: 114320528735506668}
-  totalComment: 0
-  totalCommentText: {fileID: 114052760123166148}
-  totalCharge: 0
-  totalChargeText: {fileID: 114763323888877846}
+  commentTotal: 0
+  commentTotalText: {fileID: 114052760123166148}
+  chargeTotal: 0
+  chargeTotalText: {fileID: 114763323888877846}
   activenessText: {fileID: 0}
   activenessBar: {fileID: 0}
   currentCharge: 0
@@ -596,7 +596,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "1\u56DE\u76EE"
+  m_Text: "\u672A\u5B9F\u88C5"
 --- !u!114 &114338188568605576
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -1303,6 +1303,6 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 0.9999695, y: 12.849957}
+  m_AnchoredPosition: {x: 0.9999695, y: 6.5}
   m_SizeDelta: {x: 22.6, y: 547.8}
   m_Pivot: {x: 0.5, y: 0.5}

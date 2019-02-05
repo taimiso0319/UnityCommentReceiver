@@ -53,6 +53,8 @@ namespace YouTubeLive {
 					AtlasManager.AtlasInfo atlasInfo = apiManager.listenersData.GetListenerData (c.channelId).iconAtlasInfo;
 					ApplicationManager.Instance.uIManager.superChatView.AddElement (c, atlasInfo);
 					ApplicationManager.Instance.uIManager.rankView.UpdateElement (c, atlasInfo);
+				} else if (apiManager.listenersData.IsListenerDataRoyal (c.channelId)) {
+					ApplicationManager.Instance.uIManager.rankView.UpdateElement (c, new AtlasManager.AtlasInfo ());
 				}
 				var d = Regex.Replace (c.publishedAt, @"\..*", "Z");
 				StartCoroutine (WaitComment ());

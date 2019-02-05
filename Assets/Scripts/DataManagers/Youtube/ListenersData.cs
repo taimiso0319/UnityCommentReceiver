@@ -18,6 +18,20 @@ namespace YouTubeLive {
 			return listenerDataList;
 		}
 
+		public void UpdateListenerDataRoyal (string channelId) {
+			if (listenerDataList.Count == 0) {
+				return;
+			}
+			listenerDataList.Where (d => d.channelId == channelId).First ().isRoyal = true;
+		}
+
+		public bool IsListenerDataRoyal (string channelId) {
+			if (listenerDataList.Count == 0) {
+				return false;
+			}
+			return listenerDataList.Where (d => d.channelId == channelId).First ().isRoyal;
+		}
+
 		public bool IsListenerDataExists (string channelId) {
 			if (listenerDataList.Count == 0) {
 				return false;
@@ -61,12 +75,14 @@ namespace YouTubeLive {
 		public string channelId;
 		public string channelTitle;
 		public string profileImageUrl;
+		public bool isRoyal;
 		public AtlasManager.AtlasInfo iconAtlasInfo;
 
-		public ListenerData (string id, string title, string url, AtlasManager.AtlasInfo atlasInfo) {
+		public ListenerData (string id, string title, string url, bool isRoyal, AtlasManager.AtlasInfo atlasInfo) {
 			this.channelId = id;
 			this.channelTitle = title;
 			this.profileImageUrl = url;
+			this.isRoyal = isRoyal;
 			this.iconAtlasInfo = atlasInfo;
 		}
 
@@ -76,12 +92,13 @@ namespace YouTubeLive {
 		}
 
 		public bool Equals (ListenerData other) {
-			return channelId.Equals (other.channelId) && profileImageUrl.Equals (other.profileImageUrl) && iconAtlasInfo.Equals (other.iconAtlasInfo);
+			return channelId.Equals (other.channelId) && profileImageUrl.Equals (other.profileImageUrl) && isRoyal.Equals (other.isRoyal) && iconAtlasInfo.Equals (other.iconAtlasInfo);
 		}
 
 		public override int GetHashCode () {
 			int hashCode = channelId.GetHashCode ();
 			hashCode = (hashCode * 397) ^ profileImageUrl.GetHashCode ();
+			hashCode = hashCode ^ isRoyal.GetHashCode ();
 			return hashCode ^ iconAtlasInfo.GetHashCode ();
 		}
 	}

@@ -9,10 +9,10 @@ namespace YouTubeLive.UI {
 		public string listenerId { get { return _listenerId; } }
 
 		[SerializeField] private Text attendance;
-		public int totalComment = 0;
-		[SerializeField] private Text totalCommentText;
-		public int totalCharge = 0;
-		[SerializeField] private Text totalChargeText;
+		public int commentTotal = 0;
+		[SerializeField] private Text commentTotalText;
+		public int chargeTotal = 0;
+		[SerializeField] private Text chargeTotalText;
 
 		[SerializeField] private Text activenessText;
 		[SerializeField] private Image activenessBar;
@@ -27,13 +27,17 @@ namespace YouTubeLive.UI {
 		public void SetAttendance (string attendance) { this.attendance.text = attendance + "回目"; }
 		public void SetAttendance (int attendance) { SetAttendance (attendance.ToString ()); }
 
-		public void SetTotalComment (int total) {
-			totalComment = total;
+		public void SetCommentTotal (int total) {
+			commentTotal = total;
 			UpdateText ();
 		}
 
-		public void SetTotalCharge (int total) {
-			totalCharge = total;
+		public void AddCommentTotal (int i) {
+			commentTotal += i;
+		}
+
+		public void SetChargeTotal (int total) {
+			chargeTotal = total;
 			UpdateText ();
 		}
 
@@ -42,23 +46,27 @@ namespace YouTubeLive.UI {
 			//todo: change fill ratio
 		}
 
-		public void AddCurrentCharge (int amount) {
+		public void AddCharge (int amount, bool updateTotal = false) {
 			currentCharge += amount;
 			currentCharge = currentCharge > CHARGE_LIMIT? CHARGE_LIMIT : currentCharge;
 			currentChargeBar.fillAmount = (float) currentCharge / CHARGE_LIMIT;
-			AddTotalCharge (amount);
+			if (updateTotal) {
+				AddChargeTotal (amount);
+			} else {
+				UpdateText ();
+			}
 		}
 
-		public void AddTotalCharge (int amount) {
-			totalCharge += amount;
+		public void AddChargeTotal (int amount) {
+			chargeTotal += amount;
 			UpdateText ();
 
 		}
 
 		private void UpdateText () {
 			currentChargeText.text = "￥" + currentCharge.ToString ();
-			totalChargeText.text = "￥" + totalCharge.ToString ();
-			totalCommentText.text = totalComment.ToString ();
+			chargeTotalText.text = "￥" + chargeTotal.ToString ();
+			commentTotalText.text = commentTotal.ToString ();
 		}
 	}
 }

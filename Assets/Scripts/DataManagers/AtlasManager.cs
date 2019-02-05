@@ -2,8 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public class AtlasManager {
@@ -63,7 +61,7 @@ public class AtlasTexture {
         textureCount = 0;
         textureSquareSize = texSize;
         packedTexture = new Texture2D (1024, 1024);
-        textures = new Texture2D[130];
+        textures = new Texture2D[105];
         for (int i = 0; i < textures.Length; i++) {
             textures[i] = new Texture2D (texSize, texSize, TextureFormat.DXT1, false);
         }

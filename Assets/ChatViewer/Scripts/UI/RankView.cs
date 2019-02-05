@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,9 +11,11 @@ namespace YouTubeLive.UI {
 
 	public class RankView : ScrollView {
 		private List<RankElement> elements = new List<RankElement> ();
+		[SerializeField] private InputField channelURLInputField = null;
 		public string channelId = "UC_4tXjqecqox5Uc05ncxpxg";
 		private Order currentOrder = Order.DESC;
 		private Sort currentSort = Sort.TOTAL_CHARGE;
+		private APIManager apiManager;
 		[SerializeField] private Button triangle = null;
 
 		enum Order {
@@ -29,45 +32,58 @@ namespace YouTubeLive.UI {
 		public void UpdateElement (CommentStatus commentStatus, AtlasManager.AtlasInfo atlasInfo) {
 			RankElement ele = elements.Where (x => x.listenerId.Equals (commentStatus.channelId)).FirstOrDefault ();
 			if (ele == null) {
-				AddElement (commentStatus, atlasInfo);
+				if (apiManager == null) { apiManager = APIManager.Instance; }
+				int charge = apiManager.databaseController.GetSuperChatsAmountByListenerAtChannel (APIData.channelId, commentStatus.channelId);
+				int comments = apiManager.databaseController.GetCommentTotalByListenerAtChannel (APIData.channelId, commentStatus.channelId);
+				ele = AddElement (commentStatus, charge, comments, atlasInfo) as RankElement;
+				ele.AddCharge (charge);
 			} else {
-				ele.AddCurrentCharge (commentStatus.convertedAmount);
+				ele.AddCommentTotal (1);
+				ele.AddCharge (commentStatus.convertedAmount, true);
 			}
 		}
 
-		[ContextMenu ("reltest")]
-		public void ReloadListenerRank () {
+		[ContextMenu ("clear")]
+		public void ClearElements () {
 			foreach (var e in elements) {
 				Destroy (e.gameObject);
 			}
 			elements.Clear ();
-			LoadListenerRank ();
 		}
 
 		[ContextMenu ("test")]
 		public void LoadListenerRank () {
-			APIManager apiManager = APIManager.Instance;
-			Observable.FromCoroutine (() => apiManager.RestoreListenerData (channelId), publishEveryYield : false).Subscribe (_ => Debug.Log ("restore complete. listing up."),
-				() => {
-					IReadOnlyList<ListenerData> listenerDatas = apiManager.listenersData.GetList ();
-					foreach (var l in listenerDatas) {
-						int charge = apiManager.databaseController.GetSuperChatsAmountByListenerAtChannel (channelId, l.channelId);
-						RankElement ele = elements.Where (x => x.listenerId.Equals (l.channelId)).FirstOrDefault ();
-						if (ele == null) {
-							AddElement (l.channelId, l.channelTitle, charge, l.iconAtlasInfo);
-						} else {
-							ele.AddTotalCharge (charge);
-						}
-					}
+			if (apiManager == null) { apiManager = APIManager.Instance; }
+			if (elements.Count > 0) { ClearElements (); }
+			if (apiManager.receiveChat) {
+				if (channelURLInputField.text == "") {
+					channelId = APIData.channelId;
 				}
-			);
+			}
+			if (channelId == "" || channelId == null) { Debug.LogWarning ("channelIdが入力されていません。"); return; }
+			Observable.FromCoroutine (() => apiManager.RestoreRoyalListenerData (channelId), publishEveryYield : false)
+				.Subscribe (
+					_ => Debug.Log ("restore complete. listing up."),
+					() => {
+						IReadOnlyList<ListenerData> listenerDatas = apiManager.listenersData.GetList ();
+						foreach (var l in listenerDatas) {
+							if (!l.isRoyal) { continue; }
+							int chargeTotal = apiManager.databaseController.GetSuperChatsAmountByListenerAtChannel (channelId, l.channelId);
+							int comments = apiManager.databaseController.GetCommentTotalByListenerAtChannel (channelId, l.channelId);
+							var ele = AddElement (l.channelId, l.channelTitle, chargeTotal, comments, l.iconAtlasInfo) as RankElement;
+							if (apiManager.receiveChat) {
+								int charge = apiManager.databaseController.GetSuperChatsAmountByListenerInVideo (l.channelId, APIData.videoId);
+								ele.AddCharge (charge);
+							}
+						}
+					});
 		}
 
-		public void SortByTotalCharge (bool desc) {
+		public void SortByChargeTotal (bool desc) {
 			if (!desc) {
-				elements.Sort ((a, b) => a.totalCharge - b.totalCharge);
+				elements.Sort ((a, b) => a.chargeTotal - b.chargeTotal);
 			} else {
-				elements.Sort ((a, b) => b.totalCharge - a.totalCharge);
+				elements.Sort ((a, b) => b.chargeTotal - a.chargeTotal);
 			}
 			currentOrder = desc ? Order.DESC : Order.ASC;
 			currentSort = Sort.TOTAL_CHARGE;
@@ -75,7 +91,7 @@ namespace YouTubeLive.UI {
 			UpdateTriangle ();
 		}
 
-		public void SortByCurrentCharge (bool desc) {
+		public void SortByCharge (bool desc) {
 			if (!desc) {
 				elements.Sort ((a, b) => a.currentCharge - b.currentCharge);
 			} else {
@@ -87,11 +103,11 @@ namespace YouTubeLive.UI {
 			UpdateTriangle ();
 		}
 
-		public void SortByTotalComment (bool desc) {
+		public void SortByCommentTotal (bool desc) {
 			if (!desc) {
-				elements.Sort ((a, b) => a.totalComment - b.totalComment);
+				elements.Sort ((a, b) => a.commentTotal - b.commentTotal);
 			} else {
-				elements.Sort ((a, b) => b.totalComment - a.totalComment);
+				elements.Sort ((a, b) => b.commentTotal - a.commentTotal);
 			}
 			currentOrder = desc ? Order.DESC : Order.ASC;
 			currentSort = Sort.TOTAL_COMMENT;
@@ -105,6 +121,15 @@ namespace YouTubeLive.UI {
 			}
 		}
 
+		public void ExtractChannelId () {
+			string url = channelURLInputField.text;
+			if (!url.Contains ("youtu") && !url.Contains ("channel")) {
+				Debug.LogError ("urlが正しくない恐れがあります。");
+				return;
+			}
+			channelId = Regex.Replace (url, "(https?:\\/\\/)?(www\\.)?youtu((\\.be)|(be\\..{2,5}))\\/((user)|(channel))\\/", "");
+		}
+
 		public override Element AddElement (CommentStatus commentStatus, AtlasManager.AtlasInfo atlasInfo) {
 			if (element == null || content == null) { return null; }
 			GameObject obj = Instantiate (element, content.transform);
@@ -114,37 +139,38 @@ namespace YouTubeLive.UI {
 			rankElement.SetListenerId (commentStatus.channelId);
 			rankElement.SetName (commentStatus.displayName);
 			rankElement.SetIcon (atlasInfo.packedTexture, atlasInfo.uvRect);
-			rankElement.AddCurrentCharge (commentStatus.convertedAmount);
 			elements.Add (rankElement);
 			return rankElement;
 		}
 
-		public void AddElement (CommentStatus commentStatus, int totalCharge, AtlasManager.AtlasInfo atlasInfo) {
-			if (element == null || content == null) { return; }
+		public Element AddElement (CommentStatus commentStatus, int chargeTotal, int commentTotal, AtlasManager.AtlasInfo atlasInfo) {
+			if (element == null || content == null) { return null; }
 			RankElement rankElement = AddElement (commentStatus, atlasInfo) as RankElement;
-			rankElement.SetTotalCharge (totalCharge);
+			rankElement.SetChargeTotal (chargeTotal);
+			rankElement.SetCommentTotal (commentTotal);
+			return rankElement;
 		}
 
-		public void AddElement (string listenerId, string title, int totalCharge, AtlasManager.AtlasInfo atlasInfo) {
-			if (element == null || content == null) { return; }
+		public Element AddElement (string listenerId, string title, int chargeTotal, int commentTotal, AtlasManager.AtlasInfo atlasInfo) {
+			if (element == null || content == null) { return null; }
 			CommentStatus cs = new CommentStatus ();
 			cs.channelId = listenerId;
 			cs.displayName = title;
 			cs.convertedAmount = 0;
-			AddElement (cs, totalCharge, atlasInfo);
+			return AddElement (cs, chargeTotal, commentTotal, atlasInfo);
 		}
 
 		public void SwitchOrder () {
 			bool desc = currentOrder == Order.DESC ? false : true;
 			switch (currentSort) {
 				case Sort.CHARGE:
-					SortByCurrentCharge (desc);
+					SortByCharge (desc);
 					break;
 				case Sort.TOTAL_CHARGE:
-					SortByTotalCharge (desc);
+					SortByChargeTotal (desc);
 					break;
 				case Sort.TOTAL_COMMENT:
-					SortByTotalComment (desc);
+					SortByCommentTotal (desc);
 					break;
 			}
 		}

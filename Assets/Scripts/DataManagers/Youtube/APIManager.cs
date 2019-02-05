@@ -13,7 +13,7 @@ using YouTubeLive.Util;
 namespace YouTubeLive {
     [RequireComponent (typeof (LiveStatus))]
     public class APIManager : SingletonMonoBehaviour<APIManager> {
-        private bool receiveChat = true;
+        public bool receiveChat = false;
         private bool isFirstTry = true;
         private int pollingIntervalMillis;
         [SerializeField, Tooltip ("初期化や取得ができなかった時、時間が短すぎた時に用います。3000以上が望ましいです。")] private int defaultPollingIntervalMillis = 5000;
@@ -113,6 +113,14 @@ namespace YouTubeLive {
         [ContextMenu ("ShowSuperChatData")]
         public void ShowSuperChatData () {
             var data = databaseController.GetSuperChats ();
+            foreach (var d in data) {
+                Debug.Log (d.ToString ());
+            }
+        }
+
+        [ContextMenu ("ShowSuperChatCommentData")]
+        public void ShowSuperChatCommentData () {
+            var data = databaseController.GetSuperChatComments ();
             foreach (var d in data) {
                 Debug.Log (d.ToString ());
             }
@@ -386,17 +394,18 @@ namespace YouTubeLive {
             if (serializedItems.items == null) {
                 return;
             }
-            Enumerable.Range (0, serializedItems.items.Length).ToObservable ()
-                .Subscribe (i => {
-                        string channelId = serializedItems.items[i].authorDetails.channelId;
-                        string title = serializedItems.items[i].authorDetails.displayName;
-                        string imageUrl = serializedItems.items[i].authorDetails.profileImageUrl;
-                        AddListenerData (channelId, title, imageUrl);
-                        serializedItems.items[i].snippet.superChatDetails.convertedAmount = ConvertCurrency (serializedItems.items[i].snippet.superChatDetails.currency, serializedItems.items[i].snippet.superChatDetails.amountDisplayString);
-                        CommentStatus commentStatus = _commentData.EnqueueComment (serializedItems.items[i]);
-                        commentList.Add (commentStatus);
-                    },
-                    () => databaseController.AddComment (APIData.channelId, APIData.videoId, commentList.ToArray ()));
+            for (int i = 0; i < serializedItems.items.Length; i++) {
+                string channelId = serializedItems.items[i].authorDetails.channelId;
+                string title = serializedItems.items[i].authorDetails.displayName;
+                string imageUrl = serializedItems.items[i].authorDetails.profileImageUrl;
+                bool isRoyal = false;
+                if (serializedItems.items[i].snippet.type == Json.ChatDetails.Snippet.EventType.superChatEvent.ToString ()) { isRoyal = true; }
+                AddListenerData (channelId, title, imageUrl, isRoyal);
+                serializedItems.items[i].snippet.superChatDetails.convertedAmount = ConvertCurrency (serializedItems.items[i].snippet.superChatDetails.currency, serializedItems.items[i].snippet.superChatDetails.amountDisplayString);
+                CommentStatus commentStatus = _commentData.EnqueueComment (serializedItems.items[i]);
+                commentList.Add (commentStatus);
+            }
+            Task.Run (() => databaseController.AddComment (APIData.channelId, APIData.videoId, commentList.ToArray ()));
         }
 
         public void ReCacheListenerProfileImage (string channelId) {
@@ -406,13 +415,13 @@ namespace YouTubeLive {
             }
         }
 
-        public IEnumerator RestoreListenerData (string channelId) {
+        public IEnumerator RestoreRoyalListenerData (string channelId) {
             if (databaseController == null) { _databaseController = new DatabaseController (); }
             List<DatabaseTableModel.SuperChat> list = databaseController.GetSuperChatsByChannel (channelId).ToList ();
             while (list.Count > 0) {
                 string listenerChannelId = list.First ().listenerChannelId;
                 if (!listenersData.IsListenerDataExists (listenerChannelId)) {
-                    StartCoroutine (GetListenerData (listenerChannelId));
+                    StartCoroutine (GetRoyalListenerData (listenerChannelId));
                 }
                 yield return new WaitForSeconds (0.1f);
                 list.RemoveAll (x => x.listenerChannelId == listenerChannelId);
@@ -421,7 +430,7 @@ namespace YouTubeLive {
             yield return new WaitForSeconds (3f);
         }
 
-        public IEnumerator GetListenerData (string channelId) {
+        public IEnumerator GetRoyalListenerData (string channelId) {
             string channelURI = APIData.ChannelURI (channelId);
             if (Debug.isDebugBuild) {
 #if UNITY_EDITOR
@@ -437,18 +446,29 @@ namespace YouTubeLive {
             } else {
                 string jsonText = webRequest.downloadHandler.text;
                 Json.Channel.SerializedItems serializedItems = JsonUtility.FromJson<Json.Channel.SerializedItems> (jsonText);
-                AddListenerData (channelId, serializedItems.items[0].snippet.title, serializedItems.items[0].snippet.thumbnails.@default.url);
+                AddListenerData (channelId, serializedItems.items[0].snippet.title, serializedItems.items[0].snippet.thumbnails.@default.url, true);
             }
         }
-
-        public void AddListenerData (string channelId, string title, string imageUrl) {
+        //private string[] channelIds = new string[20];
+        //private int arrayCount = 0;
+        public void AddListenerData (string channelId, string title, string imageUrl, bool isRoyal) {
             if (!_listenersData.IsListenerDataExists (channelId)) {
-                _listenersData.AddListenerData (new ListenerData (channelId, title, imageUrl, new AtlasManager.AtlasInfo ()));
+                _listenersData.AddListenerData (new ListenerData (channelId, title, imageUrl, isRoyal, new AtlasManager.AtlasInfo ()));
                 CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
-                databaseController.AddListenerData (channelId);
-            } else if (!_listenersData.IsListenerDataExists (channelId, imageUrl)) {
-                CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
+                //channelIds[arrayCount] = channelId;
+                //arrayCount++;
+            } else {
+                if (isRoyal) {
+                    _listenersData.UpdateListenerDataRoyal (channelId);
+                }
             }
+            //if (arrayCount == channelIds.Length) {
+            //    databaseController.AddListenerData (channelIds);
+            //    arrayCount = 0;
+            //}
+            //if (!_listenersData.IsListenerDataExists (channelId, imageUrl)) {
+            //    CacheListenerProfileImage (channelId, imageUrl).ConfigureAwait (false);
+            //}
         }
 
         //private IEnumerator CacheListenerProfileImage (string channelId, string imageUrl) {
@@ -470,6 +490,7 @@ namespace YouTubeLive {
             _listenersData.UpdateProfileImage (channelId, imageUrl, atlasInfo);
             webRequest.Dispose ();
         }
+
         private int ConvertCurrency (string currency, string amountString) {
             if (amountString == null) return 0;
             string currencyString = Regex.Match (amountString, "[0-9].*").Value;
